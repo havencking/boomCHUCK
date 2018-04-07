@@ -41,7 +41,9 @@ struct nunchuck
 };
 
 void i2cPrintStatus();
-uint8_t nunchuckI2C(uint8_t command, uint8_t data);
+uint8_t nunchuckStartI2C(uint8_t data);
+uint8_t nunchuckContinueTxI2C(uint8_t data);
+uint8_t nunchuckStopI2C(uint8_t data);
 uint8_t nunchuckInit();
 struct nunchuck readNunchuck();
 void i2c_IRQHandler();

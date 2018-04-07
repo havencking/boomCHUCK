@@ -36,6 +36,8 @@
 #define SPI_TXDATCTL_RXIGNORE 	(0x1 << 22)
 #define SPI_TXDATCTL_LEN	 	(0xF << 24) // 16 bits
 
+#define MASK_10_BITS			0x3FF
+
 void spi0Init();
 uint8_t spi0IsReadyToTx();
 void spi0Write(uint16_t data);

@@ -29,6 +29,7 @@
 #include "uart.h"
 #endif
 
+#define LEFT_NUNCHUCK 0 // zero for right, one for left
 #define PRESSED 0
 
 // pin 1: I2C0_SDA
@@ -56,13 +57,6 @@ void SwitchMatrix_Init()
 
        /* Pin Assign 1 bit Configuration */
        LPC_SWM->PINENABLE0 = 0xffffffffUL;
-}
-
-uint16_t bound(uint16_t x, uint16_t min, uint16_t max)
-{
-	if (x < min) { return min; }
-	else if (x > max) { return max; }
-	else { return x; }
 }
 
 int main(void)
@@ -113,31 +107,17 @@ int main(void)
 
     while(1)
     {
-#if I2C_DEBUG
-		printf("main loop\r\n");
-#endif	
 		// reset drum triggers
 		writeDAC(7,0);
 		writeDAC(8,0);
+		TriggeredOff();
 		
 		cur = readNunchuck();
 		
 		if (cur.good)
 		{
-#if I2C_DEBUG
-			printf("GOOD READ\r\n");
-
-			printf("A");
-			uint16_t j = 0;
-			for (j = 0; j < cur.sx; j++)
-			{
-				printf("X");
-			}
-			printf("Z\r\n");
-#endif
-			
 			// trigger drums
-			if ((prev.bc != PRESSED && cur.bc == PRESSED) || (cur.bc == PRESSED && cur.az > 850))
+			if (cur.bc == PRESSED && isTriggered())
 			{
 				writeDAC(7, 500);
 			}			
@@ -147,43 +127,43 @@ int main(void)
 			}
 			prev.bc = cur.bc;
 			prev.bz = cur.bz;
-		}
-		
-		// read again to keep I2C bus alive
-		cur = readNunchuck();
-		if (cur.good)
-		{
-			// measured controller ranges (with accelerometer resting)
+
+			// measured controller ranges with accelerometer resting
 			// ax left-right 			290-695
 			// ay point up-point down	302-700
 			// az upright-upside down 	675-286
 			// sx left-right			31-228
 			// sy down-up				31-226
 			
+			// DAC values, control LEDs have ~1.8V forward voltage
 		    // DAC 1023 => 5.5V
 			// DAC 186 => 1.0V
 			// DAC 372 => 2.0V
 			// DAC 558 => 3.0V
 			// DAC 744 => 4.0V
 			
+#if LEFT_NUNCHUCK			
 			// resonance - left
 			writeDAC(1, (cur.sx * 3 / 2) + 340);
-			// cutoff 1 - left / cutoff 3 - right
-			writeDAC(2, (bound(cur.ax, 288, 697) - 288) * 5 / 2);
-			// cutoff 2 - left / cutoff 4 - right 
-			writeDAC(3, (bound(cur.ay, 296, 705) - 296) * 5 / 2);
 			// filter mix - left
 			writeDAC(4, (cur.sy * 3) + 300);
+#else
+			// modulate clip with a ramp - right
+			// setIntervalMRT0((cur.sx - 30) | 0x1);
 			// clip - right
-			writeDAC(5, (cur.sy * 3) + 345);
-			// clip - right
-			writeDAC(6, (cur.sx * 3) + 345);
+			writeDAC(5, (cur.sy * 3) + 345); //(getCount0() % 345));
+#endif			
 			
-			prev.sx = cur.sx;
-			prev.sy = cur.sy;
-			prev.ax = cur.ax;
-			prev.ay = cur.ay;
-			prev.az = cur.az;
+			// cutoff 1 - left / cutoff 3 - right
+			writeDAC(2, ((cur.ax * 3 / 2) - 55) & MASK_10_BITS);
+			// cutoff 2 - left / cutoff 4 - right 
+			writeDAC(3, ((cur.ax * 3 / 2) - 55) & MASK_10_BITS);
+			
+			// repeat trigger interval - both sides
+			// zero stops timer, so choose only odd values
+			// cap at 255 to keep interval < 256 ms in case of overflow
+			setIntervalMRT1(((710 - cur.ay) | 0x1 ) & 0xff);
+		
 		}	
 	}
 }

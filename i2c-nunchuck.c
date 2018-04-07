@@ -55,69 +55,71 @@ void i2cPrintStatus()
 #endif
 }
 
-uint8_t nunchuckI2C(uint8_t command, uint8_t data)
+uint8_t nunchuckStartI2C(uint8_t data)
 {
-	switch (command)
+
+	while (i2cIsBusy()) {}
+	if (i2cIsIdle())
 	{
-		case START:
-			while (i2cIsBusy()) {}
-			if (i2cIsIdle())
-			{
-				i2cWriteData(data);
-				i2cStart();
+		i2cWriteData(data);
+		i2cStart();
 #if I2C_DEBUG
-				printf("start: ");
-				i2cPrintStatus();
+		printf("start: ");
+		i2cPrintStatus();
 #endif
-				while (i2cSlaveNACKed())
-				{
-					i2cStop();
-				}
-			}
-			else
-			{
-#if I2C_DEBUG		
-				printf("start error: not idle: ");
-				i2cPrintStatus();
-#endif
-				return 0;
-			}
-		return 1;
-		
-		case CONTINUE_TX:
-			while (i2cIsBusy()) {}
-			if (i2cIsReadyToTx())
-			{
-				i2cWriteData(data);
-				i2cContinue();
-#if I2C_DEBUG
-				printf("cont: ");
-				i2cPrintStatus();
-#endif
-				while (i2cSlaveNACKed())
-				{
-					i2cStop();
-				}
-			}
-			else
-			{
-#if I2C_DEBUG
-				printf("cont error: not tx ready: ");
-				i2cPrintStatus();
-#endif
-				return 0;
-			}
-		return 1;
-		
-		case STOP:
-			while (i2cIsBusy()) {}
+		while (i2cSlaveNACKed())
+		{
 			i2cStop();
-#if I2C_DEBUG
-			printf("stop: ");
-			i2cPrintStatus();
-#endif
-		return 1;
+		}
 	}
+	else
+	{
+#if I2C_DEBUG		
+		printf("start error: not idle: ");
+		i2cPrintStatus();
+#endif
+		return 0;
+	}
+return 1;
+
+}	
+
+uint8_t nunchuckContinueTxI2C(uint8_t data)
+{
+	while (i2cIsBusy()) {}
+	if (i2cIsReadyToTx())
+	{
+		i2cWriteData(data);
+		i2cContinue();
+#if I2C_DEBUG
+		printf("cont: ");
+		i2cPrintStatus();
+#endif
+		while (i2cSlaveNACKed())
+		{
+			i2cStop();
+		}
+	}
+	else
+	{
+#if I2C_DEBUG
+		printf("cont error: not tx ready: ");
+		i2cPrintStatus();
+#endif
+		return 0;
+	}
+	return 1;
+}
+
+uint8_t nunchuckStopI2C(uint8_t data)
+{		
+	while (i2cIsBusy()) {}
+	i2cStop();
+#if I2C_DEBUG
+	printf("stop: ");
+	i2cPrintStatus();
+#endif
+	return 1;
 }
 
 
@@ -133,21 +135,21 @@ uint8_t nunchuckInit()
     printf("INIT\r\n");
 #endif
 	
-	if (nunchuckI2C(START, 0xa4))
+	if (nunchuckStartI2C(0xa4))
 	{
-		if (nunchuckI2C(CONTINUE_TX, 0xf0))
+		if (nunchuckContinueTxI2C(0xf0))
 		{
-			if (nunchuckI2C(CONTINUE_TX, 0x55))
+			if (nunchuckContinueTxI2C(0x55))
 			{
-				if (nunchuckI2C(STOP, 0))
+				if (nunchuckStopI2C(0))
 				{
-					if (nunchuckI2C(START, 0xa4))
+					if (nunchuckStartI2C(0xa4))
 					{
-						if (nunchuckI2C(CONTINUE_TX, 0xfb))
+						if (nunchuckContinueTxI2C(0xfb))
 						{
-							if (nunchuckI2C(CONTINUE_TX, 0x00))
+							if (nunchuckContinueTxI2C(0x00))
 							{
-								if (nunchuckI2C(STOP, 0))
+								if (nunchuckStopI2C(0))
 								{
 									return 1;
 								}
@@ -174,13 +176,13 @@ struct nunchuck readNunchuck()
     struct nunchuck n;
     
     
-	if (nunchuckI2C(START, 0xa4))
+	if (nunchuckStartI2C(0xa4))
 	{
-		if (nunchuckI2C(CONTINUE_TX, 0x00))
+		if (nunchuckContinueTxI2C(0x00))
 		{
-			if (nunchuckI2C(STOP, 0))
+			if (nunchuckStopI2C(0))
 			{
-				if (nunchuckI2C(START, 0xa5))
+				if (nunchuckStartI2C(0xa5))
 				{
 					for (i = 0; i < 6; i++)
 					{
@@ -192,7 +194,7 @@ struct nunchuck readNunchuck()
 						}
 						else
 						{
-							nunchuckI2C(STOP, 0);
+							nunchuckStopI2C(0);
 							n.good = 0;
 							return n;
 						}
@@ -200,33 +202,33 @@ struct nunchuck readNunchuck()
 				}
 				else
 				{
-					nunchuckI2C(STOP, 0);
+					nunchuckStopI2C(0);
 					n.good = 0;
 					return n;
 				}
 			}
 			else
 			{
-				nunchuckI2C(STOP, 0);
+				nunchuckStopI2C(0);
 				n.good = 0;
 				return n;
 			}
 		}
 		else
 		{
-			nunchuckI2C(STOP, 0);
+			nunchuckStopI2C(0);
 			n.good = 0;
 			return n;
 		}
 	}
 	else
 	{
-		nunchuckI2C(STOP, 0);
+		nunchuckStopI2C(0);
 		n.good = 0;
 		return n;
 	}
 	
-	nunchuckI2C(STOP, 0);
+	nunchuckStopI2C(0);
 	
 	n.sx = data[0];
 	n.sy = data[1];

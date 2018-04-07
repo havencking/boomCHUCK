@@ -28,6 +28,11 @@
 
 #define CLOCK_HZ 30000000
 
+uint8_t isTriggered();
+void setIntervalMRT0(uint16_t time);
+uint32_t getCount0();
+void setIntervalMRT1(uint16_t ms);
+void TriggeredOff();
 void pause(uint32_t ms);
 void MRT_IRQHandler(void);
 void mrtInit(uint8_t num_channels);

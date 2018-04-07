@@ -21,6 +21,32 @@
 #include "mrt-nunchuck.h"
 
 volatile uint32_t mrt_counter[] = {0, 0, 0, 0};
+volatile uint8_t triggered = 0;
+
+uint8_t isTriggered()
+{
+	return triggered;
+}
+
+uint32_t getCount0()
+{
+	return mrt_counter[0];
+}
+
+void setIntervalMRT0(uint16_t time)
+{
+	LPC_MRT->Channel[0].INTVAL = time * 300;
+}
+
+void setIntervalMRT1(uint16_t ms)
+{
+	LPC_MRT->Channel[1].INTVAL = ms * 30000;
+}
+
+void TriggeredOff()
+{
+	triggered = 0;
+}
 
 void pause(uint32_t ms)
 {
@@ -40,9 +66,9 @@ void MRT_IRQHandler(void)
 	if ( LPC_MRT->Channel[1].STAT & MRT_STAT_IRQ_FLAG )
 	{
 		LPC_MRT->Channel[1].STAT = MRT_STAT_IRQ_FLAG; // clear flag
-		mrt_counter[1]++;
+		triggered = 1;
 	}
-	if ( LPC_MRT->Channel[2].STAT & MRT_STAT_IRQ_FLAG )
+/*	if ( LPC_MRT->Channel[2].STAT & MRT_STAT_IRQ_FLAG )
 	{
 		LPC_MRT->Channel[2].STAT = MRT_STAT_IRQ_FLAG; // clear flag
 		mrt_counter[2]++;
@@ -51,7 +77,7 @@ void MRT_IRQHandler(void)
 	{
 		LPC_MRT->Channel[3].STAT = MRT_STAT_IRQ_FLAG; // clear flag
 		mrt_counter[3]++;
-	}
+	}*/
 	return;
 }
 
