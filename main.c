@@ -29,7 +29,7 @@
 #include "uart.h"
 #endif
 
-#define LEFT_NUNCHUCK 0 // zero for right, one for left
+#define LEFT_NUNCHUCK 1 // zero for right, one for left
 #define PRESSED 0
 
 // pin 1: I2C0_SDA
@@ -121,6 +121,11 @@ int main(void)
 			{
 				writeDAC(7, 500);
 			}			
+			if (prev.bc != PRESSED && cur.bc == PRESSED)
+			{
+				writeDAC(7, 500);
+				setIntervalMRT1((((710 - cur.ay) | 0x1 ) & 0xff) | (0x1 << 31));
+			}
 			if ((prev.bz != PRESSED && cur.bz == PRESSED) || (cur.bz == PRESSED && cur.az > 850)) 
 			{
 				writeDAC(8, 500);
